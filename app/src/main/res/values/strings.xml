@@ -1,0 +1,9 @@
+<resources>
+    <string name="google_maps_api_key">AIzaSyBgO5py0IvxuzMqWmMVvGTZ6zNZ5jOT2Xo</string>
+
+    <string name="app_name">FitnessTracker</string>
+    <string name="start">start</string>
+    <string name="finish">finish</string>
+    <string name="no_history_to_display">No history to display</string>
+    <string name="start_running_today_do_not_put_it_off">Start running today. Do not put it off.</string>
+</resources>
