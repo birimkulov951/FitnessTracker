@@ -50,9 +50,10 @@ public class FitnessTrackerAdapter extends ListAdapter<FitnessTracker,FitnessTra
     @Override
     public void onBindViewHolder(@NonNull TeslaHolder holder, int position) {
         FitnessTracker currentRoute = getItem(position);
-        holder.mDistance.setText(currentRoute.getDistance());
-        holder.mAverageSpeed.setText(currentRoute.getAverageSpeed());
-        holder.mTime.setText(currentRoute.getTime());
+
+        holder.mDistance.setText(currentRoute.getDistance() + " m");
+        holder.mAverageSpeed.setText(currentRoute.getAverageSpeed() + " m/h");
+        holder.mTime.setText(currentRoute.getTime() + " s");
 
         Calendar calendar = Calendar.getInstance();
         calendar.setTimeInMillis(Long.parseLong(currentRoute.getDate()));
@@ -66,15 +67,25 @@ public class FitnessTrackerAdapter extends ListAdapter<FitnessTracker,FitnessTra
         String mAmPm;
         if (calendar.get(Calendar.AM_PM) == 0) {
             mAmPm = "AM";
+            if (mHour >= 6) {
+                holder.mRunType.setText("Morning run");
+            } else {
+                holder.mRunType.setText("Night run");
+            }
         } else {
             mAmPm = "PM";
+            if (mHour >= 6) {
+                holder.mRunType.setText("Evening run");
+            } else {
+                holder.mRunType.setText("Noon run");
+            }
         }
 
         String dateStr = mDay + "/" + mMonth + "/" + mYear + " at " + mHour + ":" + mMinutes + " " + mAmPm;
 
         holder.mDate.setText(dateStr);
 
-        // add bitmap here todo
+        // add bitmap route history here todo
 
     }
 
@@ -92,6 +103,7 @@ public class FitnessTrackerAdapter extends ListAdapter<FitnessTracker,FitnessTra
         private TextView mAverageSpeed;
         private TextView mTime;
         private TextView mDate;
+        private TextView mRunType;
         //private ImageView mRouteHistory;
 
         public TeslaHolder(@NonNull View itemView) {
@@ -100,6 +112,7 @@ public class FitnessTrackerAdapter extends ListAdapter<FitnessTracker,FitnessTra
             mAverageSpeed = itemView.findViewById(R.id.average_speed);
             mTime = itemView.findViewById(R.id.run_time);
             mDate = itemView.findViewById(R.id.date);
+            mRunType = itemView.findViewById(R.id.run_type);
             //mRouteHistory = itemView.findViewById(R.id.history_bitmap);
 
 

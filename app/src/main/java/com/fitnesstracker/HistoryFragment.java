@@ -1,31 +1,31 @@
 package com.fitnesstracker;
 
-import androidx.appcompat.app.AppCompatActivity;
+import android.annotation.SuppressLint;
+import android.os.Bundle;
+import android.util.Log;
+import android.view.LayoutInflater;
+import android.view.View;
+import android.view.ViewGroup;
+import android.widget.TextView;
+import android.widget.Toast;
+
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+import androidx.fragment.app.Fragment;
 import androidx.lifecycle.Observer;
 import androidx.recyclerview.widget.ItemTouchHelper;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
-import android.annotation.SuppressLint;
-import android.os.Bundle;
-import android.util.Log;
-import android.view.View;
-import android.widget.TextView;
-import android.widget.Toast;
-
 import com.fitnesstracker.mvp.MainContract;
 import com.fitnesstracker.mvp.MainPresenter;
 import com.fitnesstracker.repository.FitnessTracker;
 
-import java.text.DecimalFormat;
-import java.util.Calendar;
 import java.util.List;
 
-import static com.fitnesstracker.MapActivity.EXTRA_DISTANCE;
+public class HistoryFragment extends Fragment implements MainContract.View {
 
-public class HistoryActivity extends AppCompatActivity implements MainContract.View {
-
-    private static final String TAG = "HistoryActivity";
+    private static final String TAG = "HistoryFragment";
 
     /** MVP Presenter */
     private MainContract.Presenter presenter;
@@ -40,24 +40,26 @@ public class HistoryActivity extends AppCompatActivity implements MainContract.V
     /** TextView that is displayed when the list is empty */
     private TextView mEmptyText, mEmptyText2;
 
+   /** Required empty fragment to receive data from MapFragment */
+    public HistoryFragment() {}
 
     @Override
-    protected void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_history);
+    public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
+        super.onViewCreated(view, savedInstanceState);
 
-        mEmptyText = (TextView) findViewById(R.id.empty_text);
-        mEmptyText2 = (TextView) findViewById(R.id.empty_text_2);
-        mRecyclerView = findViewById(R.id.recycler_view);
+        mEmptyText = (TextView) view.findViewById(R.id.empty_text);
+        mEmptyText2 = (TextView) view.findViewById(R.id.empty_text_2);
+        mRecyclerView = view.findViewById(R.id.recycler_view);
+
 
         mAdapter = new FitnessTrackerAdapter();
-        mLayoutManager = new LinearLayoutManager(this);
-        presenter = new MainPresenter(this, getApplication());
+        mLayoutManager = new LinearLayoutManager(getActivity());
+        presenter = new MainPresenter(this, getActivity().getApplication());
 
         mRecyclerView.setLayoutManager(mLayoutManager);
         mRecyclerView.setAdapter(mAdapter);
 
-        presenter.getAllRunHistory().observe(this, new Observer<List<FitnessTracker>>() {
+        presenter.getAllRunHistory().observe(getActivity(), new Observer<List<FitnessTracker>>() {
             @Override
             public void onChanged(List<FitnessTracker> fitnessTrackers) {
                 mAdapter.submitList(fitnessTrackers);
@@ -69,14 +71,18 @@ public class HistoryActivity extends AppCompatActivity implements MainContract.V
             }
         });
 
-        if (getIntent().hasExtra(EXTRA_DISTANCE)) {
+        setOnItemClickListener();
 
-            double distance = Double.parseDouble(getIntent().getExtras().getString(EXTRA_DISTANCE));
-            double averageSpeed = Double.parseDouble(getIntent().getExtras().getString(MapActivity.EXTRA_AVERAGE_SPEED));
-            double time = Double.parseDouble(getIntent().getExtras().getString(MapActivity.EXTRA_RUN_TIME));
-            String date = getIntent().getExtras().getString(MapActivity.EXTRA_DATE);
+        try{
+            String distance = getArguments().getString("DISTANCE");
+            String averageSpeed = getArguments().getString("AVERAGE_SPEED");
+            String time = getArguments().getString("RUN_TIME");
+            String date = getArguments().getString("DATE");
 
-            @SuppressLint("DefaultLocale") FitnessTracker tracker = new FitnessTracker(date,String.format("%.2f",distance),String.format("%.2f",averageSpeed),String.format("%.2f",time));
+            @SuppressLint("DefaultLocale") FitnessTracker tracker = new FitnessTracker(date,
+                    String.format("%.2f",Double.valueOf(distance)),
+                    String.format("%.2f",Double.valueOf(averageSpeed)),
+                    String.format("%.2f",Double.valueOf(time)));
 
             presenter.insert(tracker);
 
@@ -85,10 +91,20 @@ public class HistoryActivity extends AppCompatActivity implements MainContract.V
             Log.d(TAG, "onCreate: tracker data time: " + time);
             Log.d(TAG, "onCreate: tracker data date: " + date);
 
-            Toast.makeText(this, "Saved", Toast.LENGTH_SHORT).show();
+            Toast.makeText(getActivity(), "Saved", Toast.LENGTH_SHORT).show();
+        } catch (Exception e) {
+            e.printStackTrace();
+            Log.d(TAG, "onCreateView: bundle is null");
         }
 
-        setOnItemClickListener();
+    }
+
+    @Nullable
+    @Override
+    public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
+        View v =  inflater.inflate(R.layout.fragment_history, container, false);
+
+        return  v;
     }
 
 
@@ -103,17 +119,10 @@ public class HistoryActivity extends AppCompatActivity implements MainContract.V
             @Override
             public void onSwiped(RecyclerView.ViewHolder viewHolder, int direction) {
                 presenter.delete(mAdapter.getTeslaAt(viewHolder.getAdapterPosition()));
-                Toast.makeText(HistoryActivity.this, "Deleted", Toast.LENGTH_SHORT).show();
+                Toast.makeText(getActivity(), "Deleted", Toast.LENGTH_SHORT).show();
 
             }
         }).attachToRecyclerView(mRecyclerView);
-
-       /* mAdapter.setOnItemClickListener(new FitnessTrackerAdapter.OnItemClickListener() {
-            @Override
-            public void onItemClick(int position) {
-                Toast.makeText(HistoryActivity.this, "List item clicked", Toast.LENGTH_SHORT).show();
-            }
-        });*/
 
     }
 
@@ -128,6 +137,5 @@ public class HistoryActivity extends AppCompatActivity implements MainContract.V
         mEmptyText.setVisibility(View.INVISIBLE);
         mEmptyText2.setVisibility(View.INVISIBLE);
     }
+
 }
-
-

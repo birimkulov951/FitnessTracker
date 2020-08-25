@@ -1,4 +1,4 @@
-package com.fitnesstracker;
+package com.fitnesstracker.ui;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -14,16 +14,20 @@ import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
+import android.graphics.Canvas;
 import android.graphics.Color;
+import android.graphics.drawable.Drawable;
 import android.location.Location;
 import android.os.Build;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
+import android.widget.TextView;
 import android.widget.Toast;
 
+import com.fitnesstracker.HistoryFragment;
+import com.fitnesstracker.R;
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.GoogleApiAvailability;
 import com.google.android.gms.location.FusedLocationProviderClient;
@@ -45,22 +49,24 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
 
     private static final String TAG = "MapActivity";
 
-    public static final String EXTRA_DISTANCE = "com.fitnesstracker.MapActivity.EXTRA_DISTANCE";
-    public static final String EXTRA_AVERAGE_SPEED = "com.fitnesstracker.MapActivity.EXTRA_AVERAGE_SPEED";
-    public static final String EXTRA_RUN_TIME = "com.fitnesstracker.MapActivity.EXTRA_RUN_TIME";
-    public static final String EXTRA_DATE = "com.fitnesstracker.MapActivity.EXTRA_DATE";
+    // Intent EXTRAS
+    public static final String EXTRA_DISTANCE = "com.fitnesstracker.ui.MapActivity.EXTRA_DISTANCE";
+    public static final String EXTRA_AVERAGE_SPEED = "com.fitnesstracker.ui.MapActivity.EXTRA_AVERAGE_SPEED";
+    public static final String EXTRA_RUN_TIME = "com.fitnesstracker.ui.MapActivity.EXTRA_RUN_TIME";
+    public static final String EXTRA_DATE = "com.fitnesstracker.ui.MapActivity.EXTRA_DATE";
 
     private static final String FINE_LOCATION = Manifest.permission.ACCESS_FINE_LOCATION;
     private static final String COURSE_LOCATION = Manifest.permission.ACCESS_COARSE_LOCATION;
     private static final int ERROR_DIALOG_REQUEST = 9001;
     private static final int LOCATION_PERMISSION_REQUEST_CODE = 1234;
-    private static final float DEFAULT_ZOOM = 14f;
+    private static final float DEFAULT_ZOOM = 18f;
 
     // vars
     private Boolean mLocationPermissionsGranted = false;
     private GoogleMap mMap;
     private FusedLocationProviderClient mFusedLocationProviderClient;
     private Button mStartToRunBtn, mFinishToRunBtn;
+    private TextView mNoGpsSignal;
     private double currentLatitude;
     private double currentLongitude;
     private Polyline polyline;
@@ -77,11 +83,11 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_map);
 
-        getLocationPermission();
-
         mStartToRunBtn = findViewById(R.id.start_to_run);
         mFinishToRunBtn = findViewById(R.id.finish_to_run);
+        mNoGpsSignal = findViewById(R.id.no_gps_signal);
 
+        getLocationPermission();
 
         mFinishToRunBtn.setOnClickListener(new View.OnClickListener() {
             @RequiresApi(api = Build.VERSION_CODES.O)
@@ -118,10 +124,11 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
                     finishButtonPressed();
 
                     String distanceData = String.valueOf(distance);
-                    String runTimeData = String.valueOf((System.currentTimeMillis()-time)/1000); // todo add run time minutes and cut decimals
+                    String runTimeData = String.valueOf((System.currentTimeMillis()-time)/1000);
                     String averageSpeedData = String.valueOf(averageSpeed);
                     String dateData = String.valueOf(System.currentTimeMillis());
-                    // Saving new the run data
+                    // Saving new run data
+
                     Intent intent = new Intent(MapActivity.this, HistoryActivity.class);
                     intent.putExtra(EXTRA_DISTANCE, distanceData);
                     intent.putExtra(EXTRA_AVERAGE_SPEED, averageSpeedData);
@@ -145,12 +152,10 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
 
                 mMap.setOnMyLocationChangeListener(new GoogleMap.OnMyLocationChangeListener() {
 
-                    PolylineOptions options = new PolylineOptions()
-                            .clickable(true)
-                            .width(7)
-                            .color(Color.BLUE);
+                    PolylineOptions options = new PolylineOptions().clickable(true).width(7).color(Color.BLUE);
                     double oldLatitude = currentLatitude;
                     double oldLongitude = currentLongitude;
+                    boolean hasMarker = false;
 
                     @Override
                     public void onMyLocationChange(Location location) {
@@ -158,21 +163,26 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
                         if (isFinishPressed) {
                             distance = 0;
                             polyline.remove();
-
+                            hasMarker = false;
                         } else if (oldLatitude != location.getLatitude() && oldLongitude != location.getLongitude()) {
 
-                            //getDeviceLocation(false);
                             Log.d(TAG, "onClick: current location lat lnt: " +  location.getLatitude() + ", " + location.getLongitude());
+                            // adding polyline
                             options.add(new LatLng(location.getLatitude(), location.getLongitude()));
                             polyline = mMap.addPolyline(options);
                             polyline.setClickable(true);
-                            polyline.setWidth(5);
+                            polyline.setWidth(7);
 
-                            Bitmap customMarker = BitmapFactory.decodeResource(getResources(),R.drawable.marker);
-                            mMap.addMarker(new MarkerOptions()
-                                    .position(new LatLng(currentLatitude, currentLongitude))
-                                    .title("Start point")
-                                    .icon(BitmapDescriptorFactory.fromBitmap(customMarker)));
+                            double markerLatitude = location.getLatitude();
+                            double markerLongitude = location.getLongitude();
+                            if (!hasMarker) {
+                                hasMarker = true;
+                                Bitmap customMarker = getBitmap(R.drawable.marker_24);
+                                mMap.addMarker(new MarkerOptions()
+                                        .position(new LatLng(markerLatitude, markerLongitude))
+                                        .title("Start point")
+                                        .icon(BitmapDescriptorFactory.fromBitmap(customMarker)));
+                            }
 
                             Location locationA = new Location("point A");
                             locationA.setLatitude(oldLatitude);
@@ -255,6 +265,8 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
 
                             if (task.isSuccessful()) {
                                 Log.d(TAG, "onComplete: found location!");
+                                mNoGpsSignal.setVisibility(View.INVISIBLE);
+                                mStartToRunBtn.setVisibility(View.VISIBLE);
                                 Location currentLocation = (Location) task.getResult();
                                 currentLatitude = currentLocation.getLatitude();
                                 currentLongitude = currentLocation.getLongitude();
@@ -271,7 +283,8 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
                             }
 
                         } catch (Exception e) {
-                            Toast.makeText(getApplicationContext(), "Please turn on your GPS", Toast.LENGTH_SHORT).show();
+                            mNoGpsSignal.setVisibility(View.VISIBLE);
+                            mStartToRunBtn.setVisibility(View.INVISIBLE);
                         }
 
                     }
@@ -368,6 +381,17 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
         Log.d(TAG, "onPolylineClick: getCameraPosition: " + mMap.getCameraPosition());
         Toast.makeText(this, "Route type " + polyline.getColor(), Toast.LENGTH_SHORT).show();
 
+    }
+
+    private Bitmap getBitmap(int drawableRes) {
+        Drawable drawable = getResources().getDrawable(drawableRes);
+        Canvas canvas = new Canvas();
+        Bitmap bitmap = Bitmap.createBitmap(drawable.getIntrinsicWidth(), drawable.getIntrinsicHeight(), Bitmap.Config.ARGB_8888);
+        canvas.setBitmap(bitmap);
+        drawable.setBounds(0, 0, drawable.getIntrinsicWidth(), drawable.getIntrinsicHeight());
+        drawable.draw(canvas);
+
+        return bitmap;
     }
 }
 
